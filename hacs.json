@@ -1,0 +1,8 @@
+{
+  "name": "HCM Rated Tracker",
+  "render_readme": true,
+  "homeassistant": "2024.6.0",
+  "iot_class": [
+    "Local Polling"
+  ]
+}
