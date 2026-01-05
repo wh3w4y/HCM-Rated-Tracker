@@ -1,32 +1,26 @@
-# HCM Rated Tracker (Book Tracker)
+# HCM Rated Tracker
 
-A small Home Assistant custom integration that lets you log books with a 1–10 rating and shows:
-- Draft fields (Title, Author, Rating) you can edit directly in the dashboard
-- Buttons to Save (log the book) and Recommend (generate suggestions)
-- A Log text entity (latest entries)
-- A Recommendations text entity
+A simple Home Assistant integration to log books with a rating and generate lightweight recommendations.
 
-## Editable data file (recommended)
-Create/edit:
+**YAML is the source of truth** for the log at:
 
 `/config/hcm_rated_tracker/books.yaml`
 
-Example:
+## books.yaml format
 
 ```yaml
 entries:
-  - date: 2026-01-05
-    title: Sharp Objects
-    author: Gillian Flynn
-    rating: 8
+  - title: The Hobbit
+    author: J. R. R. Tolkien
+    rating: 9
+    date: 2026-01-05
 ```
 
-If `books.yaml` exists it is treated as the source of truth on startup and on reload.
+- `date` is optional (defaults to today)
+- `rating` must be 0–10
 
 ## Services
-- `hcm_rated_tracker.log_item` — Log a book (title, extra/author, rating)
-- `hcm_rated_tracker.generate_recommendations` — Regenerate suggestions
-- `hcm_rated_tracker.reload_books_yaml` — Reload `/config/hcm_rated_tracker/books.yaml`
 
-## Notes
-- If `books.yaml` exists, saving/logging will also write back to it (keeps it in sync).
+- `hcm_rated_tracker.log_item` (title, extra/author, rating)
+- `hcm_rated_tracker.generate_recommendations`
+- `hcm_rated_tracker.reload_books_yaml`
