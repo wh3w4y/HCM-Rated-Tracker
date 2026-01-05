@@ -1,28 +1,23 @@
 from __future__ import annotations
 
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import Entity
-from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
-from .const import DOMAIN, SIGNAL_UPDATED
+from .const import DOMAIN
 
+class HcmRatedTrackerEntity(Entity):
+    _attr_has_entity_name = True
 
-class TrackerEntity(Entity):
-    def __init__(self, manager, name: str, unique_suffix: str) -> None:
-        self.manager = manager
-        self._attr_name = name
-        self._attr_unique_id = f"{DOMAIN}_{manager.entry_id}_{unique_suffix}"
-        self._unsub = None
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
+        self.hass = hass
+        self.entry = entry
+        self._manager = hass.data[DOMAIN][entry.entry_id]
 
-    async def async_added_to_hass(self) -> None:
-        self._unsub = async_dispatcher_connect(
-            self.hass, SIGNAL_UPDATED, self._handle_update
-        )
+    @property
+    def manager(self):
+        return self._manager
 
-    async def async_will_remove_from_hass(self) -> None:
-        if self._unsub:
-            self._unsub()
-            self._unsub = None
-
-    def _handle_update(self, entry_id: str) -> None:
-        if entry_id == self.manager.entry_id:
-            self.async_write_ha_state()
+    @property
+    def available(self) -> bool:
+        return True

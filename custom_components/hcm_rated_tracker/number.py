@@ -1,29 +1,30 @@
 from __future__ import annotations
 
 from homeassistant.components.number import NumberEntity
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
 
-from .entity_base import TrackerEntity
+from .entity_base import HcmRatedTrackerEntity
 
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities) -> None:
+    async_add_entities([RatingNumber(hass, entry)])
 
-class RatingNumber(TrackerEntity, NumberEntity):
+class RatingNumber(HcmRatedTrackerEntity, NumberEntity):
+    _attr_name = "Rating"
     _attr_icon = "mdi:star"
-    _attr_native_min_value = 1
-    _attr_native_max_value = 10
-    _attr_native_step = 1
+    _attr_min_value = 0
+    _attr_max_value = 10
+    _attr_step = 1
     _attr_mode = "slider"
 
-    def __init__(self, manager):
-        super().__init__(manager, "Rating", "draft_rating")
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
+        super().__init__(hass, entry)
+        self._value = 0
 
     @property
     def native_value(self) -> float | None:
-        return float(self.manager.draft_rating or 5)
+        return self._value
 
     async def async_set_native_value(self, value: float) -> None:
-        self.manager.draft_rating = int(round(value))
+        self._value = int(value)
         self.async_write_ha_state()
-
-
-async def async_setup_entry(hass, entry, async_add_entities):
-    manager = hass.data["hcm_rated_tracker"][entry.entry_id]
-    async_add_entities([RatingNumber(manager)], True)

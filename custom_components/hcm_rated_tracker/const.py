@@ -1,11 +1,12 @@
+from __future__ import annotations
+
 DOMAIN = "hcm_rated_tracker"
 
 ATTR_TITLE = "title"
-ATTR_EXTRA = "extra"  # used for author
+ATTR_EXTRA = "extra"
 ATTR_RATING = "rating"
 
-STORAGE_VERSION = 1
-
+# YAML source of truth (relative to /config)
 DEFAULT_YAML_REL_PATH = "hcm_rated_tracker/books.yaml"
 
-SIGNAL_UPDATED = "hcm_rated_tracker_updated"
+PLATFORMS: list[str] = ["text", "number", "button"]

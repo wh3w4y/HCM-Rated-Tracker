@@ -1,15 +1,15 @@
 {
   "domain": "hcm_rated_tracker",
   "name": "HCM Rated Tracker",
+  "version": "1.2.0",
+  "documentation": "https://github.com/wh3w4y/HCM-Rated-Tracker",
+  "issue_tracker": "https://github.com/wh3w4y/HCM-Rated-Tracker/issues",
   "codeowners": [
     "@wh3w4y"
   ],
   "config_flow": true,
-  "documentation": "https://github.com/wh3w4y/HCM-Rated-Tracker",
-  "issue_tracker": "https://github.com/wh3w4y/HCM-Rated-Tracker/issues",
-  "iot_class": "local_polling",
+  "iot_class": "local_push",
   "requirements": [
     "PyYAML>=6.0.1"
-  ],
-  "version": "0.3.0"
+  ]
 }

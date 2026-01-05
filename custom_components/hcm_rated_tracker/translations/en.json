@@ -3,13 +3,11 @@
     "step": {
       "user": {
         "title": "HCM Rated Tracker",
-        "description": "Add the HCM Rated Tracker integration.",
-        "data": {}
+        "description": "Create a tracker instance",
+        "data": {
+          "name": "Name"
+        }
       }
-    },
-    "error": {},
-    "abort": {
-      "single_instance_allowed": "Only one instance is allowed."
     }
   }
 }

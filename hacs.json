@@ -1,8 +1,8 @@
 {
   "name": "HCM Rated Tracker",
+  "content_in_root": false,
   "render_readme": true,
-  "homeassistant": "2024.6.0",
-  "iot_class": [
-    "Local Polling"
+  "domains": [
+    "hcm_rated_tracker"
   ]
 }

@@ -1,122 +1,92 @@
 from __future__ import annotations
 
-from dataclasses import replace
-from typing import Any
-
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.dispatcher import async_dispatcher_send
 
-from .books_yaml import load_books_yaml, save_books_yaml
-from .const import SIGNAL_UPDATED
-from .storage import RatedEntry, TrackerState, TrackerStorage
-
+from .yaml_store import YamlStore, RatedEntry, TrackerState
 
 class TrackerManager:
-    def __init__(self, hass: HomeAssistant, entry_id: str) -> None:
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         self.hass = hass
-        self.entry_id = entry_id
-        self.storage = TrackerStorage(hass, entry_id)
+        self.entry = entry
+        self.store = YamlStore(hass)
         self.state = TrackerState()
 
-        # Draft fields (edited via entities)
-        self.draft_title: str = ""
-        self.draft_extra: str = ""
-        self.draft_rating: int = 5
-
     async def load(self) -> None:
-        self.state = await self.storage.load()
-        # keep drafts sane
-        if self.draft_rating < 1 or self.draft_rating > 10:
-            self.draft_rating = 5
-        async_dispatcher_send(self.hass, SIGNAL_UPDATED, self.entry_id)
+        self.state = await self.store.load()
+        await self.generate_recommendations()
 
-    async def save_state(self) -> None:
-        await self.storage.save(self.state)
-        async_dispatcher_send(self.hass, SIGNAL_UPDATED, self.entry_id)
+    async def save(self) -> None:
+        await self.store.save(self.state)
 
     async def reload_from_yaml(self) -> None:
-        yaml_entries = load_books_yaml(self.hass)
-        if yaml_entries is None:
+        self.state = await self.store.load()
+        await self.generate_recommendations()
+
+    async def add_entry(self, date: str, title: str, extra: str, rating: int) -> None:
+        title = title.strip()
+        extra = extra.strip()
+
+        current = await self.store.load()
+
+        def key(e: RatedEntry) -> tuple[str, str]:
+            return (e.title.strip().lower(), e.extra.strip().lower())
+
+        new_e = RatedEntry(date=date, title=title, extra=extra, rating=int(rating))
+
+        # update/insert
+        found = False
+        updated: list[RatedEntry] = []
+        for e in current.entries:
+            if key(e) == key(new_e):
+                updated.append(new_e)
+                found = True
+            else:
+                updated.append(e)
+        if not found:
+            updated.insert(0, new_e)
+
+        current.entries = updated
+        self.state = current
+
+        await self.generate_recommendations()
+        await self.save()
+
+    async def generate_recommendations(self) -> None:
+        entries = self.state.entries
+        if not entries:
+            self.state.recommendations = "Add some books and tap Recommend to see suggestions."
             return
-        self.state.entries = [
-            RatedEntry(date=e["date"], title=e["title"], extra=e["extra"], rating=e["rating"])
-            for e in yaml_entries
-        ]
-        # recommendations will be regenerated on demand
-        self.state.recommendations = ""
-        await self.save_state()
+
+        top = [e for e in entries if e.rating >= 9]
+        mid = [e for e in entries if 7 <= e.rating <= 8]
+        low = [e for e in entries if e.rating <= 6]
+
+        authors_top: dict[str, int] = {}
+        for e in top:
+            if e.extra:
+                authors_top[e.extra] = authors_top.get(e.extra, 0) + 1
+
+        fav_authors = sorted(authors_top.items(), key=lambda kv: kv[1], reverse=True)[:3]
+        fav_authors_txt = ", ".join([a for a, _ in fav_authors]) if fav_authors else "—"
+
+        lines: list[str] = []
+        lines.append(f"Books logged: {len(entries)}")
+        lines.append(f"Top-rated (9–10): {len(top)} | Mid (7–8): {len(mid)} | Low (0–6): {len(low)}")
+        lines.append(f"Favourite author(s): {fav_authors_txt}")
+        if top:
+            lines.append("Try more like your 9–10s: search for similar authors/series or the same genre.")
+        if low:
+            lines.append("Low-rated books can help: note what you disliked in the Author field or a tag.")
+        self.state.recommendations = "\n".join(lines)
 
     def format_log(self, limit: int = 50) -> str:
         if not self.state.entries:
             return "No books logged yet."
-        lines = []
+        out = []
         for e in self.state.entries[:limit]:
-            author = e.extra.strip() or "Unknown"
-            lines.append(f"{e.date} — {e.title} ({author}) — {e.rating}/10")
-        return "\n".join(lines)
-
-    async def add_entry(self, date: str, title: str, extra: str, rating: int, persist_yaml: bool = False) -> None:
-        new = RatedEntry(date=date, title=title, extra=extra, rating=rating)
-        # newest first, avoid exact duplicates
-        entries = [new] + [
-            e for e in self.state.entries
-            if not (e.date == new.date and e.title == new.title and e.extra == new.extra and e.rating == new.rating)
-        ]
-        self.state.entries = entries
-        await self.save_state()
-
-        if persist_yaml:
-            # If YAML exists OR user wants YAML, write it (creates folder/file)
-            payload = [
-                {"date": e.date, "title": e.title, "extra": e.extra, "rating": e.rating}
-                for e in self.state.entries
-            ]
-            save_books_yaml(self.hass, payload)
-
-    async def commit_draft(self) -> None:
-        title = (self.draft_title or "").strip()
-        if not title:
-            return
-        extra = (self.draft_extra or "").strip()
-        rating = int(self.draft_rating or 0)
-        if rating < 1 or rating > 10:
-            return
-        today = self.hass.config.time_zone  # unused, keep lint happy
-        from homeassistant.util.dt import now
-        d = now(self.hass).date().isoformat()
-        await self.add_entry(date=d, title=title, extra=extra, rating=rating, persist_yaml=True)
-
-        # clear drafts (optional)
-        self.draft_title = ""
-        self.draft_extra = ""
-        self.draft_rating = 5
-        async_dispatcher_send(self.hass, SIGNAL_UPDATED, self.entry_id)
-
-    async def generate_recommendations(self) -> None:
-        if not self.state.entries:
-            self.state.recommendations = "Log a few books first, then tap Recommend."
-            await self.save_state()
-            return
-
-        # Simple heuristics: highlight favorite authors and high ratings
-        top = sorted(self.state.entries, key=lambda e: e.rating, reverse=True)[:10]
-        authors: dict[str, int] = {}
-        for e in self.state.entries:
-            a = (e.extra or "").strip()
-            if a:
-                authors[a] = authors.get(a, 0) + 1
-        top_authors = sorted(authors.items(), key=lambda kv: kv[1], reverse=True)[:3]
-
-        avg = sum(e.rating for e in self.state.entries) / max(1, len(self.state.entries))
-        lines = []
-        lines.append(f"Average rating: {avg:.1f}/10")
-        if top_authors:
-            lines.append("Most-read author(s): " + ", ".join([f"{a} ({n})" for a, n in top_authors]))
-        lines.append("Top recent picks:")
-        for e in top[:5]:
-            a = e.extra.strip() or "Unknown"
-            lines.append(f"• {e.title} — {a} — {e.rating}/10")
-        lines.append("")
-        lines.append("Suggestion: pick another book by a top author, or a similar genre to your 9–10/10 reads.")
-        self.state.recommendations = "\n".join(lines)
-        await self.save_state()
+            author = f" — {e.extra}" if e.extra else ""
+            out.append(f"{e.date} • {e.title}{author} • {e.rating}/10")
+        if len(self.state.entries) > limit:
+            out.append(f"... ({len(self.state.entries) - limit} more)")
+        return "\n".join(out)
