@@ -1,0 +1,15 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "HCM Rated Tracker",
+        "description": "Add the HCM Rated Tracker integration.",
+        "data": {}
+      }
+    },
+    "error": {},
+    "abort": {
+      "single_instance_allowed": "Only one instance is allowed."
+    }
+  }
+}
