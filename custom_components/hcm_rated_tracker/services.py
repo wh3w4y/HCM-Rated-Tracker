@@ -10,6 +10,7 @@ from .const import DOMAIN, ATTR_TITLE, ATTR_EXTRA, ATTR_RATING
 
 SERVICE_LOG = "log_item"
 SERVICE_GENERATE = "generate_recommendations"
+SERVICE_RELOAD_YAML = "reload_books_yaml"
 
 
 def _today() -> str:
@@ -22,7 +23,12 @@ def async_register_services(hass: HomeAssistant) -> None:
         if entry_id:
             manager = hass.data[DOMAIN].get(entry_id)
         else:
-            manager = next(iter({k:v for k,v in hass.data[DOMAIN].items() if k != "_services_registered"}.values()), None)
+            manager = next(
+                iter(
+                    {k: v for k, v in hass.data[DOMAIN].items() if k != "_services_registered"}.values()
+                ),
+                None,
+            )
         if manager is None:
             return
 
@@ -40,10 +46,30 @@ def async_register_services(hass: HomeAssistant) -> None:
         if entry_id:
             manager = hass.data[DOMAIN].get(entry_id)
         else:
-            manager = next(iter({k:v for k,v in hass.data[DOMAIN].items() if k != "_services_registered"}.values()), None)
+            manager = next(
+                iter(
+                    {k: v for k, v in hass.data[DOMAIN].items() if k != "_services_registered"}.values()
+                ),
+                None,
+            )
         if manager is None:
             return
         await manager.generate_recommendations()
+
+    # ✅ NEW: Reload entries from /config/hcm_rated_tracker/books.yaml (if present)
+    async def handle_reload_yaml(call) -> None:
+        entry_id = call.data.get("entry_id")
+        if entry_id:
+            managers = [hass.data[DOMAIN].get(entry_id)]
+        else:
+            managers = [
+                v for k, v in hass.data[DOMAIN].items() if k != "_services_registered"
+            ]
+
+        for manager in managers:
+            if manager is None:
+                continue
+            await manager.load()
 
     hass.services.async_register(
         DOMAIN,
@@ -62,5 +88,13 @@ def async_register_services(hass: HomeAssistant) -> None:
         DOMAIN,
         SERVICE_GENERATE,
         handle_generate,
+        schema=vol.Schema({vol.Optional("entry_id"): cv.string}),
+    )
+
+    # ✅ NEW: Service registration
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_RELOAD_YAML,
+        handle_reload_yaml,
         schema=vol.Schema({vol.Optional("entry_id"): cv.string}),
     )
