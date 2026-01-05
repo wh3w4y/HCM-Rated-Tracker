@@ -7,6 +7,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.storage import Store
 
 from .const import STORAGE_VERSION, DOMAIN
+from .books_yaml import load_books_yaml
 
 
 @dataclass
@@ -25,16 +26,20 @@ class TrackerState:
 
 class TrackerStorage:
     def __init__(self, hass: HomeAssistant, entry_id: str) -> None:
+        self._hass = hass
         key = f"{DOMAIN}.storage.{entry_id}"
         self._store = Store(hass, STORAGE_VERSION, key)
 
     async def load(self) -> TrackerState:
         data = await self._store.async_load()
         if not data:
-            return TrackerState()
+            data = {}
+
+        # Load entries from storage (current behaviour)
+        stored_entries = data.get("entries", [])
 
         entries: list[RatedEntry] = []
-        for e in data.get("entries", []):
+        for e in stored_entries:
             entries.append(
                 RatedEntry(
                     date=str(e.get("date", "")),
@@ -43,6 +48,19 @@ class TrackerStorage:
                     rating=int(e.get("rating", 0)),
                 )
             )
+
+        # ✅ NEW: If /config/hcm_rated_tracker/books.yaml exists, prefer it
+        yaml_entries = load_books_yaml(self._hass)
+        if yaml_entries is not None:
+            entries = [
+                RatedEntry(
+                    date=str(e.get("date", "")),
+                    title=str(e.get("title", "")),
+                    extra=str(e.get("extra", "")),
+                    rating=int(e.get("rating", 0)),
+                )
+                for e in yaml_entries
+            ]
 
         return TrackerState(entries=entries, recommendations=str(data.get("recommendations", "")))
 
