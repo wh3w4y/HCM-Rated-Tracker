@@ -1,0 +1,6 @@
+{
+  "name": "HCM Rated Tracker",
+  "content_in_root": false,
+  "domains": ["hcm_rated_tracker"],
+  "homeassistant": "2024.6.0"
+}

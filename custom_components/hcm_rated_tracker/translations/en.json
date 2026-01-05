@@ -1,0 +1,22 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "HCM Rated Tracker",
+        "description": "Choose what you want to track (Books/Films/Music/TV/Games) and get AI recommendations."
+      },
+      "details": {
+        "title": "Tracker details",
+        "description": "Confirm names/labels for this tracker instance."
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "HCM Rated Tracker Options",
+        "description": "Configure OpenAI and recommendation behaviour."
+      }
+    }
+  }
+}
