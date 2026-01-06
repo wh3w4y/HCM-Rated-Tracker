@@ -1,7 +1,7 @@
 {
   "domain": "hcm_rated_tracker",
   "name": "HCM Rated Tracker",
-  "version": "1.2.0",
+  "version": "1.5.0",
   "documentation": "https://github.com/wh3w4y/HCM-Rated-Tracker",
   "issue_tracker": "https://github.com/wh3w4y/HCM-Rated-Tracker/issues",
   "codeowners": [
