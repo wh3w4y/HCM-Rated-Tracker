@@ -1,0 +1,11 @@
+{
+  "title": "HCM Rated Tracker",
+  "config": {
+    "step": {
+      "user": {
+        "title": "HCM Rated Tracker",
+        "description": "Set up the HCM Rated Tracker integration."
+      }
+    }
+  }
+}
